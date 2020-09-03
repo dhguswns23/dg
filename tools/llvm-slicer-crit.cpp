@@ -185,7 +185,8 @@ static bool fileMatch(const std::string &file, const llvm::Instruction &I) {
         // check null point file
         return false;
     }
-    return subprog->getFile()->getFilename() == file;
+    std::string subprogFilename = subprog->getFile()->getFilename();
+    return subprogFilename == file;
 }
 
 static bool fileMatch(const std::string &file, const llvm::GlobalVariable &G) {

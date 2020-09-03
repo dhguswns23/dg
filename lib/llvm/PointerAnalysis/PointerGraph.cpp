@@ -374,6 +374,7 @@ LLVMPointerGraphBuilder::buildInstruction(const llvm::Instruction &Inst) {
     case Instruction::FRem:
     case Instruction::FPTrunc:
     case Instruction::FPExt:
+    case Instruction::InsertValue:
 #if LLVM_VERSION_MAJOR >= 8
     case Instruction::FNeg:
 #endif
