@@ -1,0 +1,6 @@
+FROM rshariffdeen/cpr:18.04
+
+RUN mkdir /dg
+WORKDIR /dg
+
+#CMD exec /bin/bash -c "trap : TERM INT; sleep infinity & wait"

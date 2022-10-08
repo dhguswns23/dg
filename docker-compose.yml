@@ -1,0 +1,10 @@
+version: "2.4"
+services:
+  dg:
+    container_name: dg-workenv
+    image: "${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+    tty: true
+    volumes:
+      - type: bind
+        source: "${HOST_VOLUME_PATH}"
+        target: /dg
