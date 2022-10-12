@@ -35,6 +35,6 @@ $ docker build -f Dockerfile.workenv -t dg:{$your-tag} .
 And run following command for executing working environment container.
 
 ```shell
-$ docker-compose --env-file ./workenv.env up
+$ docker-compose --env-file .workenv/.env up
 ```
 

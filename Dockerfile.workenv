@@ -3,4 +3,17 @@ FROM rshariffdeen/cpr:18.04
 RUN mkdir /dg
 WORKDIR /dg
 
+ADD workenv ./workenv/
+RUN export $(cat workenv/.env | xargs)
+
+# Install OS-level dependencies.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt install git cmake make llvm zlib1g-dev clang g++ python3
+
+# Install sub dependencies.
+RUN mkdir /deps
+RUN chmod +x ./workenv/install-sub-deps.sh
+#RUN ./workenv/install-sub-deps.sh
+
 #CMD exec /bin/bash -c "trap : TERM INT; sleep infinity & wait"
