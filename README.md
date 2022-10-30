@@ -12,6 +12,7 @@ Further, DG contains an implementation of dependence graphs and a [static progra
 * [Compiling DG](doc/compiling.md)
 * [Using llvm-slicer](doc/llvm-slicer.md)
 * [Other tools](doc/tools.md)
+* [Work Environment](doc/workenv.md)
 
 ------------------------------------------------
 

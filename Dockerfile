@@ -21,7 +21,7 @@ ARG GIT_REPO=mchalupa/dg
 
 # Install build dependencies
 RUN apt-get install -yq --no-install-recommends ca-certificates cmake git \
-                                                ninja-build llvm-dev python3
+  ninja-build llvm-dev python3
 
 # Clone
 RUN git clone https://github.com/$GIT_REPO
@@ -29,9 +29,15 @@ WORKDIR /dg
 RUN git fetch origin $GIT_REF:build
 RUN git checkout build
 
+# Install Vcpkg
+RUN git clone https://github.com/Microsoft/vcpkg.git /opt/vcpkg
+RUN /opt/vcpkg/bootstrap-vcpkg.sh && /opt/vcpkg/vcpkg integrate install && /opt/vcpkg/vcpkg integrate bash && echo 'export PATH=$PATH:/opt/vcpkg' >>~/.bashrc
+
 # libfuzzer does not like the container environment
 RUN cmake -S. -GNinja -Bbuild -DCMAKE_INSTALL_PREFIX=/opt/dg \
-          -DCMAKE_CXX_COMPILER=clang++ -DENABLE_FUZZING=OFF
+  -DCMAKE_CXX_COMPILER=clang++ -DENABLE_FUZZING=OFF \
+  -DCMAKE_TOOLCHAIN_FILE=/opt/vcpkg/scripts/buildsystems/vcpkg.cmake
+
 RUN cmake --build build
 RUN cmake --build build --target check
 

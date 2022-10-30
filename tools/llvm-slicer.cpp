@@ -5,16 +5,21 @@
 #include <string>
 #include <vector>
 
+#include "dg/tools/llvm-slicer-json.h"
 #include "dg/tools/llvm-slicer-opts.h"
 #include "dg/tools/llvm-slicer-preprocess.h"
 #include "dg/tools/llvm-slicer-utils.h"
 #include "dg/tools/llvm-slicer.h"
 #include "git-version.h"
 
+#include <llvm/IR/DebugInfoMetadata.h>
+#include <llvm/IR/DebugLoc.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/raw_ostream.h>
+
+#include <json/json.h>
 
 #include "dg/ADT/Queue.h"
 #include "dg/util/debug.h"
@@ -306,6 +311,13 @@ int main(int argc, char *argv[]) {
         errs() << "ERROR: Slicing failed\n";
         return 1;
     }
+
+    SlicedJson sj(M.get());
+    sj.build();
+    std::string jsonOutput = options.inputFile;
+    replace_suffix(jsonOutput, ".sliced.json");
+    sj.saveOutput(jsonOutput);
+    // sj.saveOutput("path");
 
     if (dump_dg) {
         dumper.dumpToDot(".sliced.dot");

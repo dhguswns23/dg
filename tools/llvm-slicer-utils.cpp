@@ -10,6 +10,8 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include "json/json.h"
+
 #include <string>
 
 std::vector<std::string> splitList(const std::string &opt, char sep) {

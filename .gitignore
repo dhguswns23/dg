@@ -78,6 +78,7 @@ git-version.h
 
 # build directory
 build
+vcpkg_installed/
 
 # sourcetrail files
 dg.srctrl*
