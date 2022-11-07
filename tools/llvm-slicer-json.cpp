@@ -1,6 +1,7 @@
 #include "json/json.h"
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DebugLoc.h>
+#include <llvm/Support/FileSystem.h>
 
 #include "dg/tools/llvm-slicer-json.h"
 
@@ -12,7 +13,10 @@ using namespace dg;
 
 Json::Value SlicedInst::json() {
     Json::Value root;
-    root["SourceFile"] = std::string(f->getParent()->getSourceFileName());
+    llvm::SmallString<128> filenameVec = llvm::StringRef(f->getParent()->getSourceFileName());
+    llvm::sys::fs::make_absolute(filenameVec);
+
+    root["SourceFile"] = filenameVec.c_str();
     root["FunctionName"] = std::string(f->getName());
 
     const llvm::DebugLoc &debugInfo = i->getDebugLoc();

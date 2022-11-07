@@ -12,7 +12,7 @@ ENV PATH="${PATH}:/dg/build/tools:/opt/vcpkg"
 # Install OS-level dependencies.
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt install -yq git cmake make vim build-essential llvm zlib1g-dev clang g++ python3 unzip tar zip
+RUN apt install -yq git cmake make vim llvm build-essential pkg-config zlib1g-dev clang g++ python3 unzip tar zip curl unzip
 
 # Install Vcpkg
 RUN git clone https://github.com/Microsoft/vcpkg.git /opt/vcpkg

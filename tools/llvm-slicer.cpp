@@ -317,7 +317,6 @@ int main(int argc, char *argv[]) {
     std::string jsonOutput = options.inputFile;
     replace_suffix(jsonOutput, ".sliced.json");
     sj.saveOutput(jsonOutput);
-    // sj.saveOutput("path");
 
     if (dump_dg) {
         dumper.dumpToDot(".sliced.dot");
