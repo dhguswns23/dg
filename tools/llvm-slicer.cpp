@@ -5,11 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "dg/tools/llvm-slicer-json.h"
 #include "dg/tools/llvm-slicer-opts.h"
 #include "dg/tools/llvm-slicer-preprocess.h"
 #include "dg/tools/llvm-slicer-utils.h"
 #include "dg/tools/llvm-slicer.h"
+#include "dg/llvm/InstructionInfoTable.h"
 #include "git-version.h"
 
 #include <llvm/IR/DebugInfoMetadata.h>
@@ -19,7 +19,10 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/raw_ostream.h>
 
+#ifdef ENABLE_JSON
+#include "dg/tools/llvm-slicer-json.h"
 #include <json/json.h>
+#endif
 
 #include "dg/ADT/Queue.h"
 #include "dg/util/debug.h"
@@ -133,6 +136,7 @@ static void maybe_print_statistics(llvm::Module *M,
            << bnum << " " << inum << "\n";
 }
 
+
 static AnnotationOptsT parseAnnotationOptions(const std::string &annot) {
     if (annot.empty())
         return {};
@@ -159,7 +163,7 @@ static AnnotationOptsT parseAnnotationOptions(const std::string &annot) {
 
 int main(int argc, char *argv[]) {
     setupStackTraceOnError(argc, argv);
-
+    
 #if ((LLVM_VERSION_MAJOR >= 6))
     llvm::cl::SetVersionPrinter([](llvm::raw_ostream & /*unused*/) {
         printf("%s\n", GIT_VERSION);
@@ -193,6 +197,7 @@ int main(int argc, char *argv[]) {
     }
 
     maybe_print_statistics(M.get(), "Statistics before ");
+    klee::InstructionInfoTable infoTable(M.get());
 
     // remove unused from module, we don't need that
     ModuleWriter writer(options, M.get());
@@ -311,16 +316,31 @@ int main(int argc, char *argv[]) {
         errs() << "ERROR: Slicing failed\n";
         return 1;
     }
-
+    #ifdef ENABLE_JSON
     SlicedJson sj(M.get());
     sj.build();
     std::string jsonOutput = options.inputFile;
     replace_suffix(jsonOutput, ".sliced.json");
     sj.saveOutput(jsonOutput);
-
+    #endif
     if (dump_dg) {
         dumper.dumpToDot(".sliced.dot");
     }
+
+    std::ofstream outfile;
+    std::string outStr;
+    outfile.open("line-infos.csv", std::ios::out);
+    for (auto &F: M.get()->getFunctionList()) {
+        for (auto &B: F.getBasicBlockList()) {
+            for (auto &I: B.getInstList()) {
+                klee::InstructionInfo info = infoTable.getInfo(&I);
+                outStr += std::to_string(info.assemblyLine) + ",";
+            }
+        }
+    }
+    outStr.pop_back();
+    outfile << outStr;
+    outfile.close();
 
     // remove unused from module again, since slicing
     // could and probably did make some other parts unused

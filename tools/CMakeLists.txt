@@ -29,17 +29,27 @@ if(LLVM_DG)
 		target_link_libraries(llvm-dg-dump PRIVATE ${SVF_LIBS}
 			PRIVATE ${llvm_transformutils})
 	endif()
-
-	find_package(jsoncpp CONFIG REQUIRED)
-	add_library(dgllvmslicer SHARED
-		llvm-slicer-metadata.cpp
-		llvm-slicer-opts.cpp
-		llvm-slicer-utils.cpp
-		llvm-slicer-preprocess.cpp
-		llvm-slicer-crit.cpp
-		llvm-slicer-json.cpp)
-	target_link_libraries(dgllvmslicer PUBLIC dgllvmdg)
-	target_link_libraries(dgllvmslicer PUBLIC jsoncpp_static JsonCpp::JsonCpp)
+	if(ENABLE_JSON)
+		add_definitions(-DENABLE_JSON)
+		find_package(jsoncpp CONFIG REQUIRED)
+		add_library(dgllvmslicer SHARED
+			llvm-slicer-metadata.cpp
+			llvm-slicer-opts.cpp
+			llvm-slicer-utils.cpp
+			llvm-slicer-preprocess.cpp
+			llvm-slicer-crit.cpp
+			llvm-slicer-json.cpp)
+		target_link_libraries(dgllvmslicer PUBLIC dgllvmdg)
+		target_link_libraries(dgllvmslicer PUBLIC jsoncpp_static JsonCpp::JsonCpp)
+	else()
+		add_library(dgllvmslicer SHARED
+			llvm-slicer-metadata.cpp
+			llvm-slicer-opts.cpp
+			llvm-slicer-utils.cpp
+			llvm-slicer-preprocess.cpp
+			llvm-slicer-crit.cpp)
+		target_link_libraries(dgllvmslicer PUBLIC dgllvmdg)
+	endif()
 
 	add_executable(llvm-slicer llvm-slicer.cpp)
 

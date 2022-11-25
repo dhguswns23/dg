@@ -180,6 +180,7 @@ static bool fileMatch(const std::string &file, const llvm::Instruction &I) {
             F->getMetadata(llvm::LLVMContext::MD_dbg));
 #else
     const auto *subprog = I.getFunction()->getSubprogram();
+    printf("%s\n", subprog->getFile()->getFilename());
 #endif
     return subprog->getFile()->getFilename() == file;
 }
@@ -329,7 +330,7 @@ static unsigned parseLine(const std::vector<std::string> &parts) {
 }
 
 static std::string parseFile(const std::vector<std::string> &parts) {
-    if (parts.size() == 4)
+    if (parts.size() == 3)
         return parts[0];
     return "";
 }
@@ -339,7 +340,7 @@ static std::string parseFun(const std::vector<std::string> &parts) {
     case 4:
         return parts[1];
     case 3:
-        return parts[0];
+        return "";
     default:
         return "";
     }
@@ -753,6 +754,15 @@ instMatchesCrit(LLVMDependenceGraph &dg, const llvm::Instruction &I,
 }
 
 static bool
+instMatchesCrit(LLVMDependenceGraph &dg, const llvm::Instruction &I,
+                const std::vector<std::pair<int, std::string>> &parsedCrit, std::string file) {
+    if (!file.empty() && fileMatch(file, I)){
+        return false;
+    }
+    return instMatchesCrit(dg, I, parsedCrit);
+}
+
+static bool
 globalMatchesCrit(const llvm::GlobalVariable &G,
                   const std::vector<std::pair<int, std::string>> &parsedCrit) {
     for (const auto &c : parsedCrit) {
@@ -768,29 +778,51 @@ globalMatchesCrit(const llvm::GlobalVariable &G,
     return false;
 }
 
+static bool
+globalMatchesCrit(const llvm::GlobalVariable &G, const std::vector<std::pair<int, std::string>> &parsedCrit, std::string file) {
+    if (!file.empty() && !fileMatch(file, G)) {
+        return false;
+    }
+    return globalMatchesCrit(G, parsedCrit);
+}
+
 static void getLineCriteriaNodes(LLVMDependenceGraph &dg,
                                  std::vector<std::string> &criteria,
                                  std::set<LLVMNode *> &nodes) {
     assert(!criteria.empty() && "No criteria given");
 
+    std::string file;
     std::vector<std::pair<int, std::string>> parsedCrit;
     for (auto &crit : criteria) {
         auto parts = splitList(crit, ':');
-        assert(parts.size() == 2);
-
-        // parse the line number
-        if (parts[0].empty()) {
-            // global variable
-            parsedCrit.emplace_back(-1, parts[1]);
-        } else if (isNumber(parts[0])) {
-            int line = atoi(parts[0].c_str());
-            if (line > 0)
-                parsedCrit.emplace_back(line, parts[1]);
+        // Now allow {filename}:{line}:{object} style.
+        assert(parts.size() == 2 || parts.size() == 3);
+        if (parts.size() == 2) {
+            // {line}:{object} style
+            // parse the line number
+            if (parts[0].empty()) {
+                // global variable
+                parsedCrit.emplace_back(-1, parts[1]);
+            } else if (isNumber(parts[0])) {
+                int line = atoi(parts[0].c_str());
+                if (line > 0)
+                    parsedCrit.emplace_back(line, parts[1]);
+            } else {
+                llvm::errs()
+                        << "Invalid line: '" << parts[0] << "'. "
+                        << "Needs to be a number or empty for global variables.\n";
+            }
         } else {
-            llvm::errs()
-                    << "Invalid line: '" << parts[0] << "'. "
-                    << "Needs to be a number or empty for global variables.\n";
+            // {filename}:{line}:{object}
+            assert(!parts[0].empty() && "File name can not be empty. Use {line}:{variable} style criteria.");
+            assert(!parts[1].empty());
+            assert(isNumber(parts[1]) && "Second criteria argument should be number.");
+
+            file = parts[0];
+            int line = atoi(parts[1].c_str());
+            parsedCrit.emplace_back(line, parts[2]);
         }
+
     }
 
     assert(!parsedCrit.empty() && "Failed parsing criteria");
@@ -799,7 +831,7 @@ static void getLineCriteriaNodes(LLVMDependenceGraph &dg,
 
     // try match globals
     for (auto &G : dg.getModule()->globals()) {
-        if (globalMatchesCrit(G, parsedCrit)) {
+        if (globalMatchesCrit(G, parsedCrit, file)) {
             LLVMNode *nd = dg.getGlobalNode(&G);
             assert(nd);
             nodes.insert(nd);
@@ -815,7 +847,7 @@ static void getLineCriteriaNodes(LLVMDependenceGraph &dg,
     for (const auto &it : getConstructedFunctions()) {
         for (auto &I :
              llvm::instructions(*llvm::cast<llvm::Function>(it.first))) {
-            if (instMatchesCrit(dg, I, parsedCrit)) {
+            if (instMatchesCrit(dg, I, parsedCrit, file)) {
                 LLVMNode *nd = it.second->getNode(&I);
                 assert(nd);
                 nodes.insert(nd);
@@ -1104,7 +1136,14 @@ getSlicingCriteriaValues(llvm::Module &M, const std::string &slicingCriteria,
             criteria += ";";
 
         auto parts = splitList(legacySlicingCriteria, ':');
-        if (parts.size() == 2) {
+        if (parts.size() == 3) {
+            if (legacySecondaryCriteria != "") {
+               criteria += ";" + parts[0] + "#" + parts[1] + "#" + parts[2] + "|" +
+                            legacySecondaryCriteria + "()"; 
+            } else {
+                criteria += parts[0] + "#" + parts[1] + "#" + parts[2];
+            }
+        } else if (parts.size() == 2) {
             if (legacySecondaryCriteria != "") {
                 criteria += ";" + parts[0] + "#" + parts[1] + "|" +
                             legacySecondaryCriteria + "()";

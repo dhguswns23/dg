@@ -1,3 +1,4 @@
+#ifdef ENABLE_JSON
 #ifndef DG_TOOLS_LLVM_SLICER_JSON_H_
 #define DG_TOOLS_LLVM_SLICER_JSON_H_
 
@@ -40,4 +41,5 @@ class SlicedJson {
 
 } // namespace dg
 
+#endif
 #endif

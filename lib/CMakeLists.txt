@@ -119,6 +119,7 @@ add_library(dgllvmdg SHARED
 	llvm/LLVMDGVerifier.cpp
 	llvm/Dominators/PostDominators.cpp
 	llvm/DefUse/DefUse.cpp
+	llvm/InstructionInfoTable.cpp
 )
 
 target_link_libraries(dgllvmdg

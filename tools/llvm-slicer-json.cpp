@@ -1,3 +1,4 @@
+#ifdef ENABLE_JSON
 #include "json/json.h"
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/DebugLoc.h>
@@ -77,3 +78,4 @@ void SlicedJson::print() {
         si.print();
     }
 }
+#endif

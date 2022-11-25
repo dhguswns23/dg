@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 OPTION(LLVM_DG "Support for LLVM Dependency graph" ON)
 OPTION(ENABLE_CFG "Add support for CFG edges to the graph" ON)
 OPTION(NO_EXCEPTIONS "Compile with -fno-exceptions (ON by default)" ON)
+option(ENABLE_JSON "Enable support for json output" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
 	message(STATUS "Build type not set. Setting default.")

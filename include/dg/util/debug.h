@@ -52,7 +52,7 @@ static inline bool dbg_should_print(unsigned int x) {
 
 inline void dbg_enable() { _setDebugLvl(1); }
 
-inline bool dbg_is_enabled() { return _getDebugLvl() > 0; }
+inline bool dbg_is_enabled() { return _getDebugLvl() >= 0; }
 
 inline std::ostream &dbg_section_begin(const char *domain = nullptr) {
     _dump_prefix(domain, "-> ");
