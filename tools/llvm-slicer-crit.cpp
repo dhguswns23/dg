@@ -180,8 +180,11 @@ static bool fileMatch(const std::string &file, const llvm::Instruction &I) {
             F->getMetadata(llvm::LLVMContext::MD_dbg));
 #else
     const auto *subprog = I.getFunction()->getSubprogram();
-    printf("%s\n", subprog->getFile()->getFilename());
 #endif
+    if (!subprog) {
+        // check null point file
+        return false;
+    }
     return subprog->getFile()->getFilename() == file;
 }
 

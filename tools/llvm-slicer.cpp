@@ -195,9 +195,9 @@ int main(int argc, char *argv[]) {
                      << options.dgOptions.entryFunction << "\n";
         return 1;
     }
+    klee::InstructionInfoTable infoTable(M.get());
 
     maybe_print_statistics(M.get(), "Statistics before ");
-    klee::InstructionInfoTable infoTable(M.get());
 
     // remove unused from module, we don't need that
     ModuleWriter writer(options, M.get());
@@ -312,7 +312,8 @@ int main(int argc, char *argv[]) {
     }
 
     // slice the graph
-    if (!slicer.slice()) {
+    std::vector<int> slicedLines = {};
+    if (!slicer.slice(&infoTable, &slicedLines)) {
         errs() << "ERROR: Slicing failed\n";
         return 1;
     }
@@ -330,13 +331,8 @@ int main(int argc, char *argv[]) {
     std::ofstream outfile;
     std::string outStr;
     outfile.open("line-infos.csv", std::ios::out);
-    for (auto &F: M.get()->getFunctionList()) {
-        for (auto &B: F.getBasicBlockList()) {
-            for (auto &I: B.getInstList()) {
-                klee::InstructionInfo info = infoTable.getInfo(&I);
-                outStr += std::to_string(info.assemblyLine) + ",";
-            }
-        }
+    for (auto line : slicedLines) {
+        outStr += std::to_string(line) + ",";
     }
     outStr.pop_back();
     outfile << outStr;

@@ -18,6 +18,7 @@
 #include "dg/Slicing.h"
 #include "dg/llvm/LLVMDependenceGraph.h"
 #include "dg/llvm/LLVMNode.h"
+#include "dg/llvm/InstructionInfoTable.h"
 
 namespace dg {
 
@@ -115,7 +116,7 @@ class LLVMSlicer : public Slicer<LLVMNode> {
     }
 
     uint32_t slice(LLVMDependenceGraph *dg, LLVMNode *start,
-                   uint32_t sl_id = 0) {
+                   uint32_t sl_id = 0, klee::InstructionInfoTable *table = nullptr, std::vector<int> *slicedLines = nullptr) {
         // mark nodes for slicing
         assert(start || sl_id != 0);
         if (start)
@@ -139,6 +140,14 @@ class LLVMSlicer : public Slicer<LLVMNode> {
             }
         }
         for (auto *F : to_erase) {
+            if (slicedLines != nullptr) {
+                slicedLines->push_back(table->getFunctionInfo(F).assemblyLine);
+                for (auto &B: F->getBasicBlockList()) {
+                    for (auto &I : B.getInstList()) {
+                        slicedLines->push_back(table->getInfo(&I).assemblyLine);
+                    }
+                }
+            }
             F->replaceAllUsesWith(llvm::UndefValue::get(F->getType()));
             F->deleteBody();
             F->eraseFromParent();

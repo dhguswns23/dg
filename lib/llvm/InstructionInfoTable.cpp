@@ -26,6 +26,8 @@
 
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/ReadWriteGraph/LLVMReadWriteGraphBuilder.h"
+#include <llvm/Support/raw_ostream.h>
 
 #include <map>
 #include <string>
@@ -161,9 +163,11 @@ const InstructionInfo &
 InstructionInfoTable::getInfo(const Instruction *inst) const {
   std::map<const llvm::Instruction*, InstructionInfo>::const_iterator it = 
     infos.find(inst);
-  if (it == infos.end())
+  if (it == infos.end()) {
+    llvm::errs() << "[RWG] warning at: " << dg::dda::ValInfo(inst) << "\n";
     llvm::report_fatal_error("invalid instruction, not present in "
                              "initial module!");
+  }
   return it->second;
 }
 

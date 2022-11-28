@@ -17,6 +17,7 @@
 #include "dg/llvm/LLVMDependenceGraph.h"
 #include "dg/llvm/LLVMDependenceGraphBuilder.h"
 #include "dg/llvm/LLVMSlicer.h"
+#include "dg/llvm/InstructionInfoTable.h"
 
 #include "dg/llvm/LLVMDG2Dot.h"
 #include "dg/llvm/LLVMDGAssemblyAnnotationWriter.h"
@@ -157,14 +158,14 @@ class Slicer {
         return true;
     }
 
-    bool slice() {
+    bool slice(klee::InstructionInfoTable *table = nullptr, std::vector<int> *slicedLines = nullptr) {
         assert(_dg && "Must run buildDG() and computeDependencies()");
         assert(slice_id != 0 && "Must run mark() method before slice()");
 
         dg::debug::TimeMeasure tm;
 
         tm.start();
-        slicer.slice(_dg.get(), nullptr, slice_id);
+        slicer.slice(_dg.get(), nullptr, slice_id, table, slicedLines);
 
         tm.stop();
         tm.report("[llvm-slicer] Slicing dependence graph took");
