@@ -8,6 +8,7 @@
 #include "dg/legacy/Analysis.h"
 #include "dg/legacy/BFS.h"
 #include "dg/legacy/NodesWalk.h"
+#include "dg/llvm/InstructionInfoTable.h"
 
 #ifdef ENABLE_CFG
 #include "dg/BBlock.h"
@@ -266,7 +267,8 @@ class Slicer : legacy::Analysis<NodeT> {
         data.blocks.insert(BB);
     }
 
-    void sliceBBlocks(BBlock<NodeT> *start, uint32_t sl_id) {
+    void sliceBBlocks(BBlock<NodeT> *start, uint32_t sl_id, 
+                      klee::InstructionInfoTable *infoTable = nullptr, std::vector<int> *slicedLines = nullptr) {
         // we must queue the blocks ourselves before we potentially remove them
         legacy::BBlockBFS<NodeT> bfs(legacy::BFS_BB_CFG);
         std::set<BBlock<NodeT> *> blocks;
@@ -279,6 +281,14 @@ class Slicer : legacy::Analysis<NodeT> {
             statistics.nodesRemoved += blk->size();
             statistics.nodesTotal += blk->size();
             ++statistics.blocksRemoved;
+            // if (infoTable != nullptr) {
+            //     for (auto &it : *blk) {
+            //         NodeT *n = it.second;
+            //         if (n->getInst() != nullptr) {
+            //             slicedLines->push_back(infoTable->getInfo(n->getInst()).assemblyLine);
+            //         }
+            //     }
+            // }
 
             // call specific handlers (overriden by child class)
             removeBlock(blk);
@@ -290,7 +300,8 @@ class Slicer : legacy::Analysis<NodeT> {
 
     // remove BBlocks that contain no node that should be in
     // sliced graph
-    void sliceBBlocks(DependenceGraph<NodeT> *graph, uint32_t sl_id) {
+    void sliceBBlocks(DependenceGraph<NodeT> *graph, uint32_t sl_id, 
+                      klee::InstructionInfoTable *infoTable = nullptr, std::vector<int> *slicedLines = nullptr) {
         auto &CB = graph->getBlocks();
 #ifndef NDEBUG
         uint32_t blocksNum = CB.size();
@@ -309,6 +320,17 @@ class Slicer : legacy::Analysis<NodeT> {
             statistics.nodesRemoved += blk->size();
             statistics.nodesTotal += blk->size();
             ++statistics.blocksRemoved;
+
+            if (infoTable != nullptr) {
+                for (auto &it : blk->getNodes()) {
+                    LLVMNode *n = it;
+                    llvm::Instruction *i = llvm::dyn_cast<llvm::Instruction>(n->getKey());
+                    if (i != nullptr) {
+                        int line = infoTable->getInfo(i).assemblyLine;
+                        slicedLines->push_back(infoTable->getInfo(i).assemblyLine);
+                    }
+                }
+            }
 
             // call specific handlers (overriden by child class)
             if (removeBlock(blk)) {

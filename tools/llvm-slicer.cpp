@@ -330,6 +330,11 @@ int main(int argc, char *argv[]) {
 
     std::ofstream outfile;
     std::string outStr;
+    // remove duplicate elements in slicedLines
+    std::sort(slicedLines.begin(), slicedLines.end());
+    slicedLines.erase(std::unique(slicedLines.begin(), slicedLines.end()),
+                      slicedLines.end());
+
     outfile.open("line-infos.csv", std::ios::out);
     for (auto line : slicedLines) {
         outStr += std::to_string(line) + ",";

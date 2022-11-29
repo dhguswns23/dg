@@ -136,7 +136,7 @@ class LLVMSlicer : public Slicer<LLVMNode> {
                 }
             } else {
                 LLVMDependenceGraph *subdg = it->second;
-                sliceGraph(subdg, sl_id);
+                sliceGraph(subdg, sl_id, table, slicedLines);
             }
         }
         for (auto *F : to_erase) {
@@ -425,9 +425,10 @@ void sliceCallNode(LLVMNode *callNode, uint32_t slice_id)
         }
     }
 
-    void sliceGraph(LLVMDependenceGraph *graph, uint32_t slice_id) {
+    void sliceGraph(LLVMDependenceGraph *graph, uint32_t slice_id, 
+                    klee::InstructionInfoTable *infoTable = nullptr, std::vector<int> *sliciedLines = nullptr) {
         // first slice away bblocks that should go away
-        sliceBBlocks(graph, slice_id);
+        sliceBBlocks(graph, slice_id, infoTable, sliciedLines);
 
         // make graph complete
         adjustBBlocksSucessors(graph, slice_id);
@@ -458,8 +459,14 @@ void sliceCallNode(LLVMNode *callNode, uint32_t slice_id)
             if (llvm::isa<llvm::CallInst>(n->getKey()))
                 sliceCallNode(n, slice_id);
                 */
-
             if (n->getSlice() != slice_id) {
+                if (infoTable != nullptr) {
+                    llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(n->getKey());
+                    if (inst != nullptr) {
+                        int line = infoTable->getInfo(inst).assemblyLine;
+                        sliciedLines->push_back(line);
+                    }
+                }
                 removeNode(n);
                 graph->deleteNode(n);
                 ++statistics.nodesRemoved;
