@@ -38,13 +38,51 @@ static inline bool isNumber(const std::string &s) {
 }
 
 static inline bool mayBeTheVar(const llvm::Value *val, const std::string &var) {
+    // global variables have names, just compare it
+    if (auto *G = llvm::dyn_cast<llvm::GlobalVariable>(val)) {
+        return G->getName() == var;
+    }
+
+    // for other cases, we must relay on the information about allocas
     auto name = valuesToVariables.find(val);
     if (name != valuesToVariables.end() && name->second != var) {
         return false;
     }
+
     // either the var matches or we do not know the var,
     // which we must take as a match
     return true;
+}
+
+static llvm::Value *constExprVar(const llvm::ConstantExpr *CE) {
+    using namespace llvm;
+    Value *var = nullptr;
+#if LLVM_VERSION_MAJOR <= 10
+    Instruction *Inst = const_cast<ConstantExpr *>(CE)->getAsInstruction();
+#else
+    Instruction *Inst = CE->getAsInstruction();
+#endif
+
+    switch (Inst->getOpcode()) {
+    case Instruction::GetElementPtr:
+        var = cast<GetElementPtrInst>(Inst)->getPointerOperand();
+        break;
+    case Instruction::BitCast:
+        var = Inst->getOperand(0);
+        break;
+    default:
+        break;
+    }
+
+#if LLVM_VERSION_MAJOR < 5
+    delete Inst;
+#else
+    Inst->deleteValue();
+#endif
+
+    if (var && isa<ConstantExpr>(var))
+        var = constExprVar(cast<ConstantExpr>(var));
+    return var;
 }
 
 static bool usesTheVariable(const llvm::Instruction &I, const std::string &var,
@@ -56,16 +94,25 @@ static bool usesTheVariable(const llvm::Instruction &I, const std::string &var,
     if (!pta) {
         // try basic cases that we can decide without PTA
         using namespace llvm;
+        const Value *operand = nullptr;
         if (auto *S = dyn_cast<StoreInst>(&I)) {
             auto *A = S->getPointerOperand()->stripPointerCasts();
-            if (isa<AllocaInst>(A) && !mayBeTheVar(A, var)) {
-                return false;
+            if (auto *C = dyn_cast<ConstantExpr>(A)) {
+                operand = constExprVar(C);
+            } else if ((isa<AllocaInst>(A) || isa<GlobalVariable>(A))) {
+                operand = A;
             }
         } else if (auto *L = dyn_cast<LoadInst>(&I)) {
             auto *A = L->getPointerOperand()->stripPointerCasts();
-            if (isa<AllocaInst>(A) && !mayBeTheVar(A, var)) {
-                return false;
+            if (auto *C = dyn_cast<ConstantExpr>(A)) {
+                operand = constExprVar(C);
+            } else if ((isa<AllocaInst>(A) || isa<GlobalVariable>(A))) {
+                operand = A;
             }
+        }
+
+        if (operand && !mayBeTheVar(operand, var)) {
+            return false;
         }
         return true;
     }
@@ -535,8 +582,15 @@ static std::vector<SlicingCriteriaSet> getSlicingCriteriaInstructions(
 
         if (!SC.primary.empty()) {
             llvm::errs() << "SC: Matched '" << primsec[0] << "' to: \n";
+            size_t n = 0;
             for (const auto *val : SC.primary) {
+                if (++n > 10)
+                    break;
                 llvm::errs() << "  " << *val << "\n";
+            }
+            if (SC.primary.size() >= n) {
+                llvm::errs() << " ... and  " << SC.primary.size() - n + 1
+                             << " more\n";
             }
 
             if (criteria_are_next_instr) {
@@ -546,8 +600,15 @@ static std::vector<SlicingCriteriaSet> getSlicingCriteriaInstructions(
                 auto newset = mapToNextInstr(SC.primary);
                 SC.primary.swap(newset);
 
+                n = 0;
                 for (const auto *val : SC.primary) {
+                    if (++n > 10)
+                        break;
                     llvm::errs() << "  SC (next): " << *val << "\n";
+                }
+                if (SC.primary.size() >= n) {
+                    llvm::errs() << " ... and  " << SC.primary.size() - n + 1
+                                 << " more\n";
                 }
             }
         }
@@ -557,10 +618,17 @@ static std::vector<SlicingCriteriaSet> getSlicingCriteriaInstructions(
                                     constructed_only);
 
             if (!SC.secondary.empty()) {
+                size_t n = 0;
                 llvm::errs() << "SC: Matched '" << primsec[1]
                              << "' (secondary) to: \n";
                 for (const auto *val : SC.secondary) {
+                    if (++n > 10)
+                        break;
                     llvm::errs() << "  " << *val << "\n";
+                }
+                if (SC.secondary.size() >= n) {
+                    llvm::errs() << " ... and  " << SC.primary.size() - n + 1
+                                 << " more\n";
                 }
             }
 
@@ -1136,9 +1204,12 @@ getSlicingCriteriaValues(llvm::Module &M, const std::string &slicingCriteria,
                          bool criteria_are_next_instr) {
     std::string criteria = slicingCriteria;
     if (legacySlicingCriteria != "") {
-        if (slicingCriteria != "")
-            criteria += ";";
+        auto legacyCriteriaParts = splitList(legacySlicingCriteria, ',');
+        for (auto &legacyCriterion : legacyCriteriaParts) {
+            if (criteria != "")
+                criteria += ";";
 
+<<<<<<< HEAD
         auto parts = splitList(legacySlicingCriteria, ':');
         if (parts.size() == 3) {
             if (legacySecondaryCriteria != "") {
@@ -1152,19 +1223,21 @@ getSlicingCriteriaValues(llvm::Module &M, const std::string &slicingCriteria,
                 criteria += ";" + parts[0] + "#" + parts[1] + "|" +
                             legacySecondaryCriteria + "()";
             } else {
+=======
+            auto parts = splitList(legacyCriterion, ':');
+            if (parts.size() == 2) {
+>>>>>>> upstream/master
                 criteria += parts[0] + "#" + parts[1];
-            }
-        } else if (parts.size() == 1) {
-            if (legacySecondaryCriteria != "") {
-                criteria += ";" + legacySlicingCriteria + "()|" +
-                            legacySecondaryCriteria + "()";
+            } else if (parts.size() == 1) {
+                criteria += legacyCriterion + "()";
             } else {
-                criteria += legacySlicingCriteria + "()";
+                llvm::errs()
+                        << "Unsupported criteria: " << legacyCriterion << "\n";
+                return {};
             }
-        } else {
-            llvm::errs() << "Unsupported criteria: " << legacySlicingCriteria
-                         << "\n";
-            return {};
+            if (legacySecondaryCriteria != "") {
+                criteria += "|" + legacySecondaryCriteria + "()";
+            }
         }
     }
 

@@ -345,6 +345,25 @@ SlicerOptions parseSlicerOptions(int argc, char *argv[], bool requireCrit,
             "cda-interproc", llvm::cl::desc("Alias to interproc-cd"),
             llvm::cl::aliasopt(interprocCd), llvm::cl::cat(SlicingOpts));
 
+    llvm::cl::opt<bool> cutoffDiverging(
+            "cutoff-diverging",
+            llvm::cl::desc("Cutoff diverging paths. That is, call abort() on "
+                           "those paths that may not reach the slicing "
+                           "criterion (default=true)."),
+            llvm::cl::init(true), llvm::cl::cat(SlicingOpts));
+
+    llvm::cl::opt<bool> criteriaAreNextInstr(
+            "criteria-are-next-instr",
+            llvm::cl::desc(
+                    "Assume that slicing criteria are not the call-sites\n"
+                    "of the given function, but the instructions that\n"
+                    "follow the call. I.e. the call is used just to mark\n"
+                    "the instruction.\n"
+                    "E.g. for 'crit' being set as the criterion, slicing "
+                    "critera are all instructions that follow any call of "
+                    "'crit'.\n"),
+            llvm::cl::init(false), llvm::cl::cat(SlicingOpts));
+
     ////////////////////////////////////
     // ===-- End of the options --=== //
     ////////////////////////////////////
@@ -378,6 +397,8 @@ SlicerOptions parseSlicerOptions(int argc, char *argv[], bool requireCrit,
     options.preservedFunctions = splitList(preservedFuns);
     options.removeSlicingCriteria = removeSlicingCriteria;
     options.forwardSlicing = forwardSlicing;
+    options.cutoffDiverging = cutoffDiverging;
+    options.criteriaAreNextInstr = criteriaAreNextInstr;
 
     auto &dgOptions = options.dgOptions;
     auto &PTAOptions = dgOptions.PTAOptions;

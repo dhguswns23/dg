@@ -71,17 +71,6 @@ llvm::cl::opt<bool> dump_bb_only(
                        " (default=false)."),
         llvm::cl::init(false), llvm::cl::cat(SlicingOpts));
 
-llvm::cl::opt<bool> criteria_are_next_instr(
-        "criteria-are-next-instr",
-        llvm::cl::desc(
-                "Assume that slicing criteria are not the call-sites\n"
-                "of the given function, but the instructions that\n"
-                "follow the call. I.e. the call is used just to mark\n"
-                "the instruction.\n"
-                "E.g. for 'crit' being set as the criterion, slicing critera "
-                "are all instructions that follow any call of 'crit'.\n"),
-        llvm::cl::init(false), llvm::cl::cat(SlicingOpts));
-
 llvm::cl::opt<std::string> annotationOpts(
         "annotate",
         llvm::cl::desc(
@@ -96,14 +85,6 @@ llvm::cl::opt<std::string> annotationOpts(
         llvm::cl::value_desc("val1,val2,..."), llvm::cl::init(""),
         llvm::cl::cat(SlicingOpts));
 
-llvm::cl::opt<bool> cutoff_diverging(
-        "cutoff-diverging",
-        llvm::cl::desc(
-                "Cutoff diverging paths. That is, call abort() on those paths "
-                "that may not reach the slicing criterion "
-                " (default=true)."),
-        llvm::cl::init(true), llvm::cl::cat(SlicingOpts));
-
 static void maybe_print_statistics(llvm::Module *M,
                                    const char *prefix = nullptr) {
     if (!statistics)
@@ -113,14 +94,14 @@ static void maybe_print_statistics(llvm::Module *M,
     uint64_t inum, bnum, fnum, gnum;
     inum = bnum = fnum = gnum = 0;
 
-    for (auto &I : *M) {
+    for (const auto &F : *M) {
         // don't count in declarations
-        if (I.empty())
+        if (F.empty())
             continue;
 
         ++fnum;
 
-        for (const BasicBlock &B : I) {
+        for (const BasicBlock &B : F) {
             ++bnum;
             inum += B.size();
         }
@@ -212,20 +193,18 @@ int main(int argc, char *argv[]) {
     /// ---------------
     // slice the code
     /// ---------------
-    if (cutoff_diverging) {
-        if (options.dgOptions.threads) {
-            errs() << "[llvm-slicer] threads are enabled, not cutting off "
-                      "diverging\n";
-            cutoff_diverging = false;
-        }
+    if (options.cutoffDiverging && options.dgOptions.threads) {
+        llvm::errs() << "[llvm-slicer] threads are enabled, not cutting off "
+                        "diverging\n";
+        options.cutoffDiverging = false;
     }
-    if (cutoff_diverging) {
+
+    if (options.cutoffDiverging) {
         DBG(llvm - slicer, "Searching for slicing criteria values");
-        auto csvalues =
-                getSlicingCriteriaValues(*M.get(), options.slicingCriteria,
-                                         options.legacySlicingCriteria,
-                                         options.legacySecondarySlicingCriteria,
-                                         criteria_are_next_instr);
+        auto csvalues = getSlicingCriteriaValues(
+                *M, options.slicingCriteria, options.legacySlicingCriteria,
+                options.legacySecondarySlicingCriteria,
+                options.criteriaAreNextInstr);
         if (csvalues.empty()) {
             llvm::errs() << "No reachable slicing criteria: '"
                          << options.slicingCriteria << "' '"
@@ -242,7 +221,7 @@ int main(int argc, char *argv[]) {
 
         DBG(llvm - slicer, "Cutting off diverging branches");
         if (!llvmdg::cutoffDivergingBranches(
-                    *M.get(), options.dgOptions.entryFunction, csvalues)) {
+                    *M, options.dgOptions.entryFunction, csvalues)) {
             errs() << "[llvm-slicer]: Failed cutting off diverging branches\n";
             return 1;
         }
@@ -263,7 +242,8 @@ int main(int argc, char *argv[]) {
     if (!getSlicingCriteriaNodes(slicer.getDG(), options.slicingCriteria,
                                  options.legacySlicingCriteria,
                                  options.legacySecondarySlicingCriteria,
-                                 criteria_nodes, criteria_are_next_instr)) {
+                                 criteria_nodes,
+                                 options.criteriaAreNextInstr)) {
         llvm::errs() << "ERROR: Failed finding slicing criteria: '"
                      << options.slicingCriteria << "'\n";
 

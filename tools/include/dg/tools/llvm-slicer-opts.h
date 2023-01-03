@@ -28,6 +28,14 @@ struct SlicerOptions {
     // do we perform forward slicing?
     bool forwardSlicing{false};
 
+    // call abort() on those paths that may not
+    // reach the slicing criterion
+    bool cutoffDiverging{true};
+
+    // assume that slicing criteria are not the call-sites
+    // but the instructions that follow the call
+    bool criteriaAreNextInstr{false};
+
     // string describing the slicing criteria
     std::string slicingCriteria{};
     // SC string in the old format
