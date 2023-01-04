@@ -1209,24 +1209,8 @@ getSlicingCriteriaValues(llvm::Module &M, const std::string &slicingCriteria,
             if (criteria != "")
                 criteria += ";";
 
-<<<<<<< HEAD
-        auto parts = splitList(legacySlicingCriteria, ':');
-        if (parts.size() == 3) {
-            if (legacySecondaryCriteria != "") {
-               criteria += ";" + parts[0] + "#" + parts[1] + "#" + parts[2] + "|" +
-                            legacySecondaryCriteria + "()"; 
-            } else {
-                criteria += parts[0] + "#" + parts[1] + "#" + parts[2];
-            }
-        } else if (parts.size() == 2) {
-            if (legacySecondaryCriteria != "") {
-                criteria += ";" + parts[0] + "#" + parts[1] + "|" +
-                            legacySecondaryCriteria + "()";
-            } else {
-=======
             auto parts = splitList(legacyCriterion, ':');
             if (parts.size() == 2) {
->>>>>>> upstream/master
                 criteria += parts[0] + "#" + parts[1];
             } else if (parts.size() == 1) {
                 criteria += legacyCriterion + "()";

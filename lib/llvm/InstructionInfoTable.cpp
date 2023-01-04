@@ -164,9 +164,11 @@ InstructionInfoTable::getInfo(const Instruction *inst) const {
   std::map<const llvm::Instruction*, InstructionInfo>::const_iterator it = 
     infos.find(inst);
   if (it == infos.end()) {
-    llvm::errs() << "[RWG] warning at: " << dg::dda::ValInfo(inst) << "\n";
-    llvm::report_fatal_error("invalid instruction, not present in "
-                             "initial module!");
+    return dummyInfo;
+    // return nullptr;
+    // llvm::errs() << "[RWG] warning at: " << dg::dda::ValInfo(inst) << "\n";
+    // llvm::report_fatal_error("invalid instruction, not present in "
+    //                          "initial module!");
   }
   return it->second;
 }

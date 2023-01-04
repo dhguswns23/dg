@@ -141,9 +141,16 @@ class LLVMSlicer : public Slicer<LLVMNode> {
         }
         for (auto *F : to_erase) {
             if (slicedLines != nullptr) {
+                // if (&table->getFunctionInfo(F) == &table->dummyInfo) {
+                //     continue;
+                // }
                 slicedLines->push_back(table->getFunctionInfo(F).assemblyLine);
+
                 for (auto &B: F->getBasicBlockList()) {
                     for (auto &I : B.getInstList()) {
+                        // if (&table->getInfo(&I) == &table->dummyInfo) {
+                        //     continue;
+                        // }
                         slicedLines->push_back(table->getInfo(&I).assemblyLine);
                     }
                 }
